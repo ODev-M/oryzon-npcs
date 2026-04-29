@@ -33,7 +33,9 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT")
-    compileOnly("com.github.retrooper:packetevents-spigot:2.5.0")
+    // PacketEvents is shaded into the plugin jar so users don't have to install
+    // it separately. The relocate() rules below rewrite its package paths.
+    implementation("com.github.retrooper:packetevents-spigot:2.5.0")
 }
 
 tasks {

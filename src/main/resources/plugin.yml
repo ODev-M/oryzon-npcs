@@ -11,7 +11,7 @@ commands:
   npc:
     description: Manage OryzonNPCs.
     aliases: [oryzonnpc, onpc]
-    usage: /npc <create|remove|list|help>
+    usage: /npc <create|remove|list|tp|help>
     permission: oryzonnpcs.command.npc
 
 permissions:

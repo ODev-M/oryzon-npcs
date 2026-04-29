@@ -1,0 +1,20 @@
+.gradle/
+build/
+out/
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# Local plugin server we use for smoke-testing
+run/
+test-server/
+
+# OS noise
+.DS_Store
+Thumbs.db

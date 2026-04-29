@@ -1,0 +1,29 @@
+name: OryzonNPCs
+version: '${version}'
+main: cv.oryzon.npcs.OryzonNpcsPlugin
+api-version: '1.20'
+authors: [ODev-M]
+description: Modern NPC plugin with in-game UI editor, ZeroBase persistence, and zero YAML.
+website: https://github.com/ODev-M/oryzon-npcs
+load: POSTWORLD
+
+commands:
+  npc:
+    description: Manage OryzonNPCs.
+    aliases: [oryzonnpc, onpc]
+    usage: /npc <create|remove|list|help>
+    permission: oryzonnpcs.command.npc
+
+permissions:
+  oryzonnpcs.*:
+    description: Grants every OryzonNPCs permission.
+    default: op
+    children:
+      oryzonnpcs.command.npc: true
+      oryzonnpcs.admin: true
+  oryzonnpcs.command.npc:
+    description: Use the /npc command.
+    default: op
+  oryzonnpcs.admin:
+    description: Admin actions (delete other players' NPCs, etc.).
+    default: op

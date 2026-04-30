@@ -127,6 +127,26 @@ public final class NpcManager {
         return true;
     }
 
+    /**
+     * Replaces an NPC's location/name/skin in place. Visually we destroy +
+     * re-spawn so every viewer picks up the new GameProfile (skin updates
+     * cannot be hot-swapped on an existing client entity).
+     */
+    public void update(Npc npc, Location newLocation, String newName, Skin newSkin, String newSkinName) {
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            despawnFor(viewer, npc);
+        }
+        if (newLocation != null) npc.setLocation(newLocation.clone());
+        if (newName != null) npc.setName(newName);
+        if (newSkin != null) npc.setSkin(newSkin, newSkinName);
+        store.save(toRecord(npc));
+        if (npc.location().getWorld() != null) {
+            for (Player viewer : npc.location().getWorld().getPlayers()) {
+                spawnFor(viewer, npc);
+            }
+        }
+    }
+
     private static NpcRecord toRecord(Npc npc) {
         Location loc = npc.location();
         return new NpcRecord(

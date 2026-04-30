@@ -2,12 +2,15 @@ package cv.oryzon.npcs;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import cv.oryzon.npcs.command.NpcCommand;
+import cv.oryzon.npcs.listener.ChatPromptListener;
+import cv.oryzon.npcs.listener.EditMenuListener;
 import cv.oryzon.npcs.listener.JoinListener;
 import cv.oryzon.npcs.listener.NpcInteractListener;
 import cv.oryzon.npcs.npc.NpcManager;
 import cv.oryzon.npcs.skin.MojangSkinFetcher;
 import cv.oryzon.npcs.store.JsonFileStore;
 import cv.oryzon.npcs.store.NpcStore;
+import cv.oryzon.npcs.ui.PendingPrompts;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -17,9 +20,8 @@ import java.nio.file.Path;
 /**
  * OryzonNPCs entry point.
  *
- * <p>M2: registers PacketEvents, the NpcManager, listeners and the /npc command.
- * No persistence yet — that's M3 (ZeroBase). M4 wires the OP shift+right-click
- * editor; M5 wires actions and the Free release goes out.
+ * <p>M4: PacketEvents + NpcManager + JSON persistence + OP shift+right-click
+ * edit menu. M5 wires the action system and ships v0.1.0 to SpigotMC.
  */
 public final class OryzonNpcsPlugin extends JavaPlugin {
 
@@ -44,10 +46,15 @@ public final class OryzonNpcsPlugin extends JavaPlugin {
         npcManager.loadFromStore();
 
         MojangSkinFetcher skins = new MojangSkinFetcher(getLogger());
+        PendingPrompts prompts = new PendingPrompts();
 
         getServer().getPluginManager().registerEvents(new JoinListener(npcManager), this);
+        getServer().getPluginManager().registerEvents(new EditMenuListener(npcManager, prompts), this);
+        getServer().getPluginManager().registerEvents(
+                new ChatPromptListener(this, npcManager, skins, prompts), this);
 
-        PacketEvents.getAPI().getEventManager().registerListener(new NpcInteractListener(npcManager));
+        PacketEvents.getAPI().getEventManager().registerListener(
+                new NpcInteractListener(this, npcManager));
         PacketEvents.getAPI().init();
 
         PluginCommand npc = getCommand("npc");

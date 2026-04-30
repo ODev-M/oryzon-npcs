@@ -6,9 +6,13 @@ import cv.oryzon.npcs.listener.JoinListener;
 import cv.oryzon.npcs.listener.NpcInteractListener;
 import cv.oryzon.npcs.npc.NpcManager;
 import cv.oryzon.npcs.skin.MojangSkinFetcher;
+import cv.oryzon.npcs.store.JsonFileStore;
+import cv.oryzon.npcs.store.NpcStore;
 import io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.nio.file.Path;
 
 /**
  * OryzonNPCs entry point.
@@ -34,7 +38,11 @@ public final class OryzonNpcsPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        npcManager = new NpcManager(this);
+        Path dataFile = getDataFolder().toPath().resolve("npcs.json");
+        NpcStore store = new JsonFileStore(dataFile, getLogger());
+        npcManager = new NpcManager(this, store);
+        npcManager.loadFromStore();
+
         MojangSkinFetcher skins = new MojangSkinFetcher(getLogger());
 
         getServer().getPluginManager().registerEvents(new JoinListener(npcManager), this);

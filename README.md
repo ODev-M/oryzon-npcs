@@ -18,10 +18,11 @@ roadmap below tracks what's coming.
 | Milestone | Deliverable                                                        |
 |-----------|--------------------------------------------------------------------|
 | M1 ✅     | Bootstrap plugin + repo + CI                                       |
-| M2        | NPC core: spawn, despawn, Mojang skins (PacketEvents)              |
-| M3        | Embed ZeroBase as the local persistence layer                      |
+| M2 ✅     | NPC core: spawn, despawn, Mojang skins (PacketEvents)              |
+| M3 ✅     | JSON-file persistence (`plugins/OryzonNPCs/npcs.json`, atomic)     |
 | M4        | In-game UI editor (inventory menus, no commands required)          |
 | M5        | Action system + **Free v0.1.0** released to SpigotMC               |
+| v0.2      | Swap JSON store for embedded ZeroBase (Java client SDK)            |
 
 ## Why another NPC plugin?
 

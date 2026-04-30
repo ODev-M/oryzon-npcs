@@ -21,14 +21,17 @@ public final class Npc {
     private String name;
     private Location location;
     private Skin skin;
+    private String skinName;
 
-    public Npc(String id, UUID profileId, int entityId, String name, Location location, Skin skin) {
+    public Npc(String id, UUID profileId, int entityId, String name, Location location,
+               Skin skin, String skinName) {
         this.id = id;
         this.profileId = profileId;
         this.entityId = entityId;
         this.name = name;
         this.location = location;
         this.skin = skin;
+        this.skinName = skinName;
     }
 
     public String id() { return id; }
@@ -37,8 +40,9 @@ public final class Npc {
     public String name() { return name; }
     public Location location() { return location; }
     public Skin skin() { return skin; }
+    public String skinName() { return skinName; }
 
     public void setName(String name) { this.name = name; }
     public void setLocation(Location location) { this.location = location; }
-    public void setSkin(Skin skin) { this.skin = skin; }
+    public void setSkin(Skin skin, String skinName) { this.skin = skin; this.skinName = skinName; }
 }

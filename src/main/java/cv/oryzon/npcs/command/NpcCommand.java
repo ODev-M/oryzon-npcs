@@ -71,7 +71,7 @@ public final class NpcCommand implements CommandExecutor, TabCompleter {
         skins.fetch(skinName).whenComplete((skin, error) -> {
             Bukkit.getScheduler().runTask(getPlugin(), () -> {
                 Skin resolved = (error != null || skin == null) ? Skin.EMPTY : skin;
-                Npc npc = manager.create(id, id, player.getLocation(), resolved);
+                Npc npc = manager.create(id, id, player.getLocation(), resolved, skinName);
                 sender.sendMessage("§aSpawned NPC §f" + npc.id()
                         + (resolved == Skin.EMPTY ? " §7(no skin)" : " §7with skin §f" + skinName));
             });

@@ -15,8 +15,11 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPl
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
 import cv.oryzon.npcs.skin.Skin;
+import cv.oryzon.npcs.store.NpcRecord;
+import cv.oryzon.npcs.store.NpcStore;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -54,11 +57,41 @@ public final class NpcManager {
     private static final long TAB_REMOVAL_DELAY_TICKS = 80L;
 
     private final Plugin plugin;
+    private final NpcStore store;
     private final Map<String, Npc> npcs = new HashMap<>();
     private final AtomicInteger entityIdCounter = new AtomicInteger(2_000_000);
 
-    public NpcManager(Plugin plugin) {
+    public NpcManager(Plugin plugin, NpcStore store) {
         this.plugin = plugin;
+        this.store = store;
+    }
+
+    /**
+     * Rebuilds in-memory NPCs from the store. Worlds that aren't loaded yet are
+     * skipped with a warning — Bukkit only resolves them by name after they're
+     * mounted, and we don't want to silently lose data.
+     */
+    public void loadFromStore() {
+        for (NpcRecord record : store.loadAll()) {
+            World world = Bukkit.getWorld(record.world());
+            if (world == null) {
+                plugin.getLogger().warning("Skipping NPC \"" + record.id()
+                        + "\": world \"" + record.world() + "\" not loaded.");
+                continue;
+            }
+            Location loc = new Location(world, record.x(), record.y(), record.z(),
+                    record.yaw(), record.pitch());
+            Skin skin = record.skinValue().isEmpty()
+                    ? Skin.EMPTY
+                    : new Skin(record.skinValue(), record.skinSignature());
+            Npc npc = new Npc(record.id(), UUID.randomUUID(),
+                    entityIdCounter.incrementAndGet(),
+                    record.name(), loc, skin, record.skinName());
+            npcs.put(record.id().toLowerCase(), npc);
+        }
+        if (!npcs.isEmpty()) {
+            plugin.getLogger().info("Loaded " + npcs.size() + " NPC(s) from disk.");
+        }
     }
 
     public Optional<Npc> get(String id) {
@@ -69,14 +102,15 @@ public final class NpcManager {
         return Collections.unmodifiableCollection(npcs.values());
     }
 
-    public Npc create(String id, String name, Location location, Skin skin) {
+    public Npc create(String id, String name, Location location, Skin skin, String skinName) {
         String key = id.toLowerCase();
         if (npcs.containsKey(key)) {
             throw new IllegalArgumentException("NPC \"" + id + "\" already exists.");
         }
         Npc npc = new Npc(id, UUID.randomUUID(), entityIdCounter.incrementAndGet(),
-                name, location.clone(), skin);
+                name, location.clone(), skin, skinName);
         npcs.put(key, npc);
+        store.save(toRecord(npc));
         for (Player viewer : location.getWorld().getPlayers()) {
             spawnFor(viewer, npc);
         }
@@ -86,10 +120,21 @@ public final class NpcManager {
     public boolean remove(String id) {
         Npc npc = npcs.remove(id.toLowerCase());
         if (npc == null) return false;
+        store.delete(npc.id());
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             despawnFor(viewer, npc);
         }
         return true;
+    }
+
+    private static NpcRecord toRecord(Npc npc) {
+        Location loc = npc.location();
+        return new NpcRecord(
+                npc.id(), npc.name(),
+                loc.getWorld() == null ? "" : loc.getWorld().getName(),
+                loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(),
+                npc.skinName() == null ? "" : npc.skinName(),
+                npc.skin().value(), npc.skin().signature());
     }
 
     /** Push every NPC in {@code viewer}'s world to that viewer. Used on join. */
@@ -109,6 +154,7 @@ public final class NpcManager {
             }
         }
         npcs.clear();
+        store.close();
     }
 
     // ---------------------------------------------------------------- packets

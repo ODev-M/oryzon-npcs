@@ -56,10 +56,10 @@ public final class NpcEditMenu {
                 "&7Sends you to where the NPC stands.",
                 "",
                 "&eClick &7to confirm."));
-        inv.setItem(SLOT_ACTIONS, item(Material.COMMAND_BLOCK, "&7Actions",
-                "&8Coming in M5",
+        inv.setItem(SLOT_ACTIONS, item(Material.COMMAND_BLOCK, "&aActions",
+                "&7" + npc.actions().size() + " configured",
                 "",
-                "&8Server-switch, run command, message, …"));
+                "&eClick &7to edit messages, commands and server switches."));
         inv.setItem(SLOT_DELETE, item(Material.BARRIER, "&cDelete NPC",
                 "&7Removes &f" + npc.id() + " &7for good.",
                 "",

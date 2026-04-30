@@ -6,6 +6,7 @@ authors: [ODev-M]
 description: Modern NPC plugin with in-game UI editor, ZeroBase persistence, and zero YAML.
 website: https://github.com/ODev-M/oryzon-npcs
 load: POSTWORLD
+softdepend: [PlaceholderAPI]
 
 commands:
   npc:

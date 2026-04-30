@@ -1,7 +1,10 @@
 package cv.oryzon.npcs;
 
 import com.github.retrooper.packetevents.PacketEvents;
+import cv.oryzon.npcs.action.ActionRunner;
 import cv.oryzon.npcs.command.NpcCommand;
+import cv.oryzon.npcs.listener.ActionsMenuListener;
+import cv.oryzon.npcs.listener.ChatPasswordPrompt;
 import cv.oryzon.npcs.listener.ChatPromptListener;
 import cv.oryzon.npcs.listener.EditMenuListener;
 import cv.oryzon.npcs.listener.JoinListener;
@@ -20,8 +23,9 @@ import java.nio.file.Path;
 /**
  * OryzonNPCs entry point.
  *
- * <p>M4: PacketEvents + NpcManager + JSON persistence + OP shift+right-click
- * edit menu. M5 wires the action system and ships v0.1.0 to SpigotMC.
+ * <p>v0.1.0: PacketEvents + NpcManager + JSON persistence + OP shift+right-click
+ * edit menu + action system (MESSAGE / RUN_COMMAND / CONNECT_SERVER) with
+ * BungeeCord/Velocity bridging and PlaceholderAPI as a soft dependency.
  */
 public final class OryzonNpcsPlugin extends JavaPlugin {
 
@@ -29,8 +33,6 @@ public final class OryzonNpcsPlugin extends JavaPlugin {
 
     @Override
     public void onLoad() {
-        // PacketEvents must be loaded (not just enabled) before any other plugin
-        // tries to talk to it during world load.
         PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));
         PacketEvents.getAPI().getSettings()
                 .reEncodeByDefault(false)
@@ -47,14 +49,17 @@ public final class OryzonNpcsPlugin extends JavaPlugin {
 
         MojangSkinFetcher skins = new MojangSkinFetcher(getLogger());
         PendingPrompts prompts = new PendingPrompts();
+        ActionRunner actionRunner = new ActionRunner(this);
+        ChatPasswordPrompt passwordPrompt = new ChatPasswordPrompt(prompts);
 
         getServer().getPluginManager().registerEvents(new JoinListener(npcManager), this);
         getServer().getPluginManager().registerEvents(new EditMenuListener(npcManager, prompts), this);
+        getServer().getPluginManager().registerEvents(new ActionsMenuListener(npcManager, prompts), this);
         getServer().getPluginManager().registerEvents(
                 new ChatPromptListener(this, npcManager, skins, prompts), this);
 
         PacketEvents.getAPI().getEventManager().registerListener(
-                new NpcInteractListener(this, npcManager));
+                new NpcInteractListener(this, npcManager, actionRunner, passwordPrompt));
         PacketEvents.getAPI().init();
 
         PluginCommand npc = getCommand("npc");

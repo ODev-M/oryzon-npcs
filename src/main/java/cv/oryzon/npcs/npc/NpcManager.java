@@ -87,6 +87,7 @@ public final class NpcManager {
             Npc npc = new Npc(record.id(), UUID.randomUUID(),
                     entityIdCounter.incrementAndGet(),
                     record.name(), loc, skin, record.skinName());
+            npc.replaceActions(record.actions());
             npcs.put(record.id().toLowerCase(), npc);
         }
         if (!npcs.isEmpty()) {
@@ -147,6 +148,10 @@ public final class NpcManager {
         }
     }
 
+    public void persist(Npc npc) {
+        store.save(toRecord(npc));
+    }
+
     private static NpcRecord toRecord(Npc npc) {
         Location loc = npc.location();
         return new NpcRecord(
@@ -154,7 +159,8 @@ public final class NpcManager {
                 loc.getWorld() == null ? "" : loc.getWorld().getName(),
                 loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(),
                 npc.skinName() == null ? "" : npc.skinName(),
-                npc.skin().value(), npc.skin().signature());
+                npc.skin().value(), npc.skin().signature(),
+                new ArrayList<>(npc.actions()));
     }
 
     /** Push every NPC in {@code viewer}'s world to that viewer. Used on join. */

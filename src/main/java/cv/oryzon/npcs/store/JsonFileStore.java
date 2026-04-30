@@ -1,5 +1,8 @@
 package cv.oryzon.npcs.store;
 
+import cv.oryzon.npcs.action.Action;
+import cv.oryzon.npcs.action.ClickType;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,14 +17,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Tiny dependency-free JSON store. Atomic via write-temp + rename. Schema is
- * stable enough that swapping the backing implementation for ZeroBase in M3b
- * doesn't change the public surface or call sites.
- *
- * <p>We accept that JSON parsing here is hand-rolled — values written by the
- * plugin are always controlled (regex-validated ids, world names, base64 skin
- * payloads). If a user hand-edits the file and breaks it, we log + start fresh
- * rather than crashing the plugin.
+ * Tiny dependency-free JSON store. Atomic via write-temp + rename. The parser
+ * supports objects, strings, numbers and arrays of objects — enough for the
+ * NPC + actions schema we control. Hand-edited files that don't conform get
+ * logged and discarded, never crash the plugin.
  */
 public final class JsonFileStore implements NpcStore {
 
@@ -35,28 +34,18 @@ public final class JsonFileStore implements NpcStore {
         load();
     }
 
-    @Override
-    public Collection<NpcRecord> loadAll() {
-        return new ArrayList<>(records.values());
-    }
+    @Override public Collection<NpcRecord> loadAll() { return new ArrayList<>(records.values()); }
 
-    @Override
-    public synchronized void save(NpcRecord record) {
+    @Override public synchronized void save(NpcRecord record) {
         records.put(record.id().toLowerCase(Locale.ROOT), record);
         flush();
     }
 
-    @Override
-    public synchronized void delete(String id) {
-        if (records.remove(id.toLowerCase(Locale.ROOT)) != null) {
-            flush();
-        }
+    @Override public synchronized void delete(String id) {
+        if (records.remove(id.toLowerCase(Locale.ROOT)) != null) flush();
     }
 
-    @Override
-    public void close() {
-        // Nothing to release; flush() is synchronous on every mutation.
-    }
+    @Override public void close() {}
 
     // ----------------------------------------------------------------- IO
 
@@ -107,7 +96,19 @@ public final class JsonFileStore implements NpcStore {
             field(sb, "skinName", r.skinName(), false);
             field(sb, "skinValue", r.skinValue(), false);
             field(sb, "skinSignature", r.skinSignature(), false);
-            sb.append("}");
+            sb.append(", \"actions\":[");
+            boolean firstAction = true;
+            for (Action a : r.actions()) {
+                if (!firstAction) sb.append(", ");
+                firstAction = false;
+                sb.append("{");
+                field(sb, "type", a.type().name(), true);
+                field(sb, "click", a.click().name(), false);
+                field(sb, "value", a.value() == null ? "" : a.value(), false);
+                field(sb, "password", a.password() == null ? "" : a.password(), false);
+                sb.append("}");
+            }
+            sb.append("]}");
         }
         sb.append("\n]\n");
         return sb.toString();
@@ -143,17 +144,14 @@ public final class JsonFileStore implements NpcStore {
 
     // ----------------------------------------------------------------- read
 
-    /** Minimal JSON-array-of-objects parser. Tolerant of whitespace; strict on shape. */
     private static List<NpcRecord> parse(String body) {
         List<NpcRecord> out = new ArrayList<>();
         Cursor c = new Cursor(body);
-        c.skipWs();
-        c.expect('[');
-        c.skipWs();
+        c.skipWs(); c.expect('['); c.skipWs();
         if (c.peek() == ']') { c.advance(); return out; }
         while (true) {
             c.skipWs();
-            out.add(parseObject(c));
+            out.add(toRecord(parseObject(c)));
             c.skipWs();
             char nx = c.peek();
             if (nx == ',') { c.advance(); continue; }
@@ -163,41 +161,75 @@ public final class JsonFileStore implements NpcStore {
         return out;
     }
 
-    private static NpcRecord parseObject(Cursor c) {
+    private static Map<String, Object> parseObject(Cursor c) {
         c.expect('{');
         Map<String, Object> fields = new LinkedHashMap<>();
         c.skipWs();
-        if (c.peek() == '}') { c.advance(); return toRecord(fields); }
+        if (c.peek() == '}') { c.advance(); return fields; }
         while (true) {
             c.skipWs();
             String key = parseString(c);
-            c.skipWs();
-            c.expect(':');
-            c.skipWs();
-            Object value = c.peek() == '"' ? parseString(c) : parseNumber(c);
-            fields.put(key, value);
+            c.skipWs(); c.expect(':'); c.skipWs();
+            fields.put(key, parseValue(c));
             c.skipWs();
             char nx = c.peek();
             if (nx == ',') { c.advance(); continue; }
             if (nx == '}') { c.advance(); break; }
             throw new IllegalStateException("Expected , or } at index " + c.pos);
         }
-        return toRecord(fields);
+        return fields;
     }
 
+    private static Object parseValue(Cursor c) {
+        char ch = c.peek();
+        if (ch == '"') return parseString(c);
+        if (ch == '[') return parseArray(c);
+        if (ch == '{') return parseObject(c);
+        return parseNumber(c);
+    }
+
+    private static List<Object> parseArray(Cursor c) {
+        c.expect('[');
+        List<Object> out = new ArrayList<>();
+        c.skipWs();
+        if (c.peek() == ']') { c.advance(); return out; }
+        while (true) {
+            c.skipWs();
+            out.add(parseValue(c));
+            c.skipWs();
+            char nx = c.peek();
+            if (nx == ',') { c.advance(); continue; }
+            if (nx == ']') { c.advance(); break; }
+            throw new IllegalStateException("Expected , or ] at index " + c.pos);
+        }
+        return out;
+    }
+
+    @SuppressWarnings("unchecked")
     private static NpcRecord toRecord(Map<String, Object> f) {
+        List<Action> actions = new ArrayList<>();
+        Object raw = f.get("actions");
+        if (raw instanceof List<?> list) {
+            for (Object element : list) {
+                if (!(element instanceof Map<?, ?> obj)) continue;
+                Map<String, Object> a = (Map<String, Object>) obj;
+                try {
+                    actions.add(new Action(
+                            Action.Type.valueOf(str(a, "type").toUpperCase(Locale.ROOT)),
+                            ClickType.valueOf(str(a, "click").toUpperCase(Locale.ROOT)),
+                            str(a, "value"),
+                            str(a, "password")));
+                } catch (IllegalArgumentException ignored) {
+                    // Unknown enum value (file edited or schema drift); drop the action.
+                }
+            }
+        }
         return new NpcRecord(
-                str(f, "id"),
-                str(f, "name"),
-                str(f, "world"),
-                dbl(f, "x"),
-                dbl(f, "y"),
-                dbl(f, "z"),
-                (float) dbl(f, "yaw"),
-                (float) dbl(f, "pitch"),
-                str(f, "skinName"),
-                str(f, "skinValue"),
-                str(f, "skinSignature"));
+                str(f, "id"), str(f, "name"), str(f, "world"),
+                dbl(f, "x"), dbl(f, "y"), dbl(f, "z"),
+                (float) dbl(f, "yaw"), (float) dbl(f, "pitch"),
+                str(f, "skinName"), str(f, "skinValue"), str(f, "skinSignature"),
+                actions);
     }
 
     private static String str(Map<String, Object> f, String key) {
@@ -228,7 +260,7 @@ public final class JsonFileStore implements NpcStore {
                     case 'r'  -> out.append('\r');
                     case 't'  -> out.append('\t');
                     case 'u'  -> {
-                        String hex = c.advance() + "" + c.advance() + c.advance() + c.advance();
+                        String hex = "" + c.advance() + c.advance() + c.advance() + c.advance();
                         out.append((char) Integer.parseInt(hex, 16));
                     }
                     default -> throw new IllegalStateException("Bad escape \\" + esc);

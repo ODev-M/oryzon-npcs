@@ -1,5 +1,7 @@
 package cv.oryzon.npcs.listener;
 
+import cv.oryzon.npcs.action.Action;
+import cv.oryzon.npcs.action.ClickType;
 import cv.oryzon.npcs.npc.Npc;
 import cv.oryzon.npcs.npc.NpcManager;
 import cv.oryzon.npcs.skin.MojangSkinFetcher;
@@ -13,6 +15,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.plugin.Plugin;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -44,7 +48,7 @@ public final class ChatPromptListener implements Listener {
         event.setCancelled(true);
         String input = event.getMessage().trim();
         if (input.equalsIgnoreCase("cancel")) {
-            player.sendMessage("§7Edit cancelled.");
+            player.sendMessage("§7Cancelled.");
             return;
         }
 
@@ -52,6 +56,11 @@ public final class ChatPromptListener implements Listener {
     }
 
     private void apply(Player player, PendingPrompts.Prompt prompt, String input) {
+        if (prompt.kind() == PendingPrompts.Kind.CALLBACK) {
+            prompt.callback().accept(input);
+            return;
+        }
+
         Optional<Npc> ref = manager.get(prompt.npcId());
         if (ref.isEmpty()) {
             player.sendMessage("§cThat NPC no longer exists.");
@@ -82,6 +91,33 @@ public final class ChatPromptListener implements Listener {
                     player.sendMessage("§aSkin updated to §f" + name + "§a.");
                 }));
             }
+            case ADD_MESSAGE_ACTION -> appendAction(player, npc,
+                    new Action(Action.Type.MESSAGE, ClickType.RIGHT, input));
+            case ADD_COMMAND_ACTION -> appendAction(player, npc,
+                    new Action(Action.Type.RUN_COMMAND, ClickType.RIGHT, input));
+            case ADD_CONNECT_ACTION -> {
+                String server;
+                String password = "";
+                int sep = input.indexOf('|');
+                if (sep >= 0) {
+                    server = input.substring(0, sep).trim();
+                    password = input.substring(sep + 1).trim();
+                } else {
+                    server = input;
+                }
+                appendAction(player, npc,
+                        new Action(Action.Type.CONNECT_SERVER, ClickType.RIGHT, server, password));
+            }
+            case CALLBACK -> { /* handled above */ }
         }
+    }
+
+    private void appendAction(Player player, Npc npc, Action action) {
+        List<Action> next = new ArrayList<>(npc.actions());
+        next.add(action);
+        npc.replaceActions(next);
+        manager.persist(npc);
+        player.sendMessage("§aAdded action §f#" + next.size() + " §7(" + action.type().name()
+                + " on " + action.click().name() + ")");
     }
 }

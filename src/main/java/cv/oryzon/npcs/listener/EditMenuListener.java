@@ -2,6 +2,7 @@ package cv.oryzon.npcs.listener;
 
 import cv.oryzon.npcs.npc.Npc;
 import cv.oryzon.npcs.npc.NpcManager;
+import cv.oryzon.npcs.ui.ActionsMenu;
 import cv.oryzon.npcs.ui.NpcEditHolder;
 import cv.oryzon.npcs.ui.NpcEditMenu;
 import cv.oryzon.npcs.ui.PendingPrompts;
@@ -62,6 +63,9 @@ public final class EditMenuListener implements Listener {
             case NpcEditMenu.SLOT_TP -> {
                 player.teleport(npc.location());
                 player.closeInventory();
+            }
+            case NpcEditMenu.SLOT_ACTIONS -> {
+                ActionsMenu.open(player, npc);
             }
             case NpcEditMenu.SLOT_DELETE -> {
                 if (!event.isShiftClick()) {

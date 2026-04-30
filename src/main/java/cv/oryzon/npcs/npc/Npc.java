@@ -1,8 +1,12 @@
 package cv.oryzon.npcs.npc;
 
+import cv.oryzon.npcs.action.Action;
 import cv.oryzon.npcs.skin.Skin;
 import org.bukkit.Location;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -22,6 +26,7 @@ public final class Npc {
     private Location location;
     private Skin skin;
     private String skinName;
+    private final List<Action> actions = new ArrayList<>();
 
     public Npc(String id, UUID profileId, int entityId, String name, Location location,
                Skin skin, String skinName) {
@@ -32,6 +37,21 @@ public final class Npc {
         this.location = location;
         this.skin = skin;
         this.skinName = skinName;
+    }
+
+    public List<Action> actions() {
+        return Collections.unmodifiableList(actions);
+    }
+
+    public void addAction(Action action) { actions.add(action); }
+    public boolean removeAction(int index) {
+        if (index < 0 || index >= actions.size()) return false;
+        actions.remove(index);
+        return true;
+    }
+    public void replaceActions(List<Action> next) {
+        actions.clear();
+        actions.addAll(next);
     }
 
     public String id() { return id; }

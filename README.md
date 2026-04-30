@@ -9,9 +9,10 @@ edit a YAML, restart, hope for the best. We treat it like a UX problem.
 
 ## Status
 
-**Pre-release.** The repository currently contains M1 scaffolding only —
-build infrastructure, plugin descriptor, and the empty plugin shell. The
-roadmap below tracks what's coming.
+**v0.1.0 — Free release.** Drop the jar in `plugins/`, restart, run
+`/npc create <id> [skin]`. Shift + right-click any NPC as an op for the
+in-game editor. PacketEvents and the JSON store are bundled — no external
+dependencies.
 
 ## Roadmap
 
@@ -21,8 +22,20 @@ roadmap below tracks what's coming.
 | M2 ✅     | NPC core: spawn, despawn, Mojang skins (PacketEvents)              |
 | M3 ✅     | JSON-file persistence (`plugins/OryzonNPCs/npcs.json`, atomic)     |
 | M4 ✅     | In-game UI editor (shift + right-click → 27-slot menu, OP-only)    |
-| M5        | Action system + **Free v0.1.0** released to SpigotMC               |
+| M5 ✅     | Actions: MESSAGE / RUN_COMMAND / CONNECT_SERVER + PlaceholderAPI   |
 | v0.2      | Swap JSON store for embedded ZeroBase (Java client SDK)            |
+
+## Actions
+
+Each NPC owns a list of actions; clicks dispatch them by trigger:
+
+- `MESSAGE` — send chat to the clicker (color codes + PlaceholderAPI)
+- `RUN_COMMAND` — execute a command as the clicker
+- `CONNECT_SERVER` — switch backend via BungeeCord/Velocity plugin messaging,
+  with optional per-NPC password (`server|password` in the editor)
+
+Triggers: `RIGHT`, `LEFT`, `SHIFT_RIGHT` (the last only fires for non-ops;
+ops get the editor instead).
 
 ## Why another NPC plugin?
 
